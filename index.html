@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>CineTracker Final Edition</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS per Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        iframe#netlify-identity-widget, .netlify-identity-menu, a[href*="netlify.com"], div:has(> a[href*="netlify.com"]), [id*="netlify"] {
+            display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important;
+        }
+        body {
+            background-color: #0b0f19; color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", sans-serif;
+            -webkit-tap-highlight-color: transparent; overflow-x: hidden;
+            padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+        }
+        #fxCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; opacity: 0.9; }
+        
+        .mode-hogwarts { background: radial-gradient(circle at center, #0f172a 0%, #000000 100%) !important; box-shadow: inset 0 0 100px #6366f1; }
+        .mode-marvel { background: linear-gradient(135deg, #450a0a 0%, #000000 50%, #172554 100%) !important; }
+        .mode-gotham { background-color: #030712 !important; filter: contrast(1.4); }
+        .mode-cyberpunk { background-color: #0d0221 !important; box-shadow: inset 0 0 100px #ff007f; }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col pb-44" id="mainBody">
+
+    <canvas id="fxCanvas" class="hidden"></canvas>
+
+    <!-- Header -->
+    <header class="px-4 py-3 flex justify-between items-center bg-[#0b0f19]/90 backdrop-blur-xl sticky top-0 z-40 border-b border-slate-800">
+        <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            <span>CineTracker</span>
+            <span class="text-[9px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full font-mono uppercase">PRO</span>
+        </h1>
+        <div class="flex items-center gap-2">
+            <button onclick="resetDatabaseConfirm()" class="bg-rose-500/10 text-rose-400 px-2.5 py-1.5 rounded-xl text-xs font-medium border border-rose-500/20" title="Reset Libreria">
+                <i class="fa-solid fa-trash-arrow-up"></i> Reset
+            </button>
+            <label class="bg-indigo-600 active:scale-95 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-lg shadow-indigo-600/20">
+                <i class="fa-solid fa-file-arrow-up"></i> Importa Excel
+                <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" onchange="importExcelFile(event)" class="hidden">
+            </label>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow px-4 flex flex-col gap-3 max-w-md mx-auto w-full pt-3 z-10">
+        
+        <!-- Search bar -->
+        <div class="relative w-full">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
+            <input type="text" id="searchInput" oninput="filterWatchlist()" placeholder="Cerca titolo o easter egg (matrix, hogwarts...)" 
+                class="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 shadow-inner">
+        </div>
+
+        <div id="modeBadge" class="hidden text-center text-[10px] font-mono uppercase tracking-widest bg-white/5 border border-white/10 py-1.5 rounded-xl text-indigo-300"></div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-2 gap-2.5">
+            <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-3 flex items-center gap-3">
+                <div class="bg-emerald-500/10 text-emerald-400 p-2.5 rounded-xl"><i class="fa-solid fa-check text-sm"></i></div>
+                <div>
+                    <p class="text-[9px] uppercase font-bold text-slate-400">Completati</p>
+                    <p id="statCompleted" class="text-sm font-extrabold text-white">0</p>
+                </div>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-3 flex items-center gap-3">
+                <div class="bg-indigo-500/10 text-indigo-400 p-2.5 rounded-xl"><i class="fa-solid fa-play text-sm"></i></div>
+                <div>
+                    <p class="text-[9px] uppercase font-bold text-slate-400">In Corso</p>
+                    <p id="statInProgress" class="text-sm font-extrabold text-white">0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            <button onclick="setStatusFilter('Tutti', this)" class="filter-pill px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap bg-indigo-600 text-white shadow-md transition">Tutti</button>
+            <button onclick="setStatusFilter('In corso', this)" class="filter-pill px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap bg-slate-900 text-slate-300 border border-slate-800">In Corso</button>
+            <button onclick="setStatusFilter('Completati', this)" class="filter-pill px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap bg-slate-900 text-slate-300 border border-slate-800">Completati</button>
+        </div>
+
+        <!-- Grid -->
+        <div id="watchlistGrid" class="grid grid-cols-2 gap-3 pb-32"></div>
+    </main>
+
+    <!-- Navigation -->
+    <nav class="fixed bottom-6 left-4 right-4 bg-slate-900/95 backdrop-blur-2xl border border-slate-800 px-6 py-3 flex justify-around items-center z-50 max-w-sm mx-auto rounded-3xl shadow-2xl">
+        <button onclick="filterWatchlist()" class="flex flex-col items-center gap-1 text-indigo-400">
+            <i class="fa-solid fa-house text-base"></i>
+            <span class="text-[10px] font-medium">Libreria</span>
+        </button>
+        <button onclick="openAddModal()" class="flex flex-col items-center gap-1 text-slate-400 hover:text-white">
+            <div class="bg-indigo-600 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg shadow-indigo-600/40 -mt-3">
+                <i class="fa-solid fa-plus text-sm"></i>
+            </div>
+            <span class="text-[10px] font-medium">Aggiungi</span>
+        </button>
+        <button onclick="runAIBulkEnhance()" class="flex flex-col items-center gap-1 text-emerald-400">
+            <i class="fa-solid fa-wand-magic-sparkles text-base"></i>
+            <span class="text-[10px] font-medium">IA Sync</span>
+        </button>
+    </nav>
+
+    <!-- Modal Gestione Titolo -->
+    <div id="itemModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-end justify-center sm:items-center sm:p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modalTitle" class="text-base font-bold text-white">Gestisci Titolo</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white p-2"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            
+            <form id="itemForm" onsubmit="saveItem(event)" class="space-y-3">
+                <input type="hidden" id="itemId">
+                
+                <div>
+                    <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Titolo</label>
+                    <input type="text" id="formTitle" onblur="autoFetchAIMetadataField()" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500" placeholder="Es. The Boys">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Tipo</label>
+                        <select id="formType" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                            <option value="serie">Serie TV</option>
+                            <option value="film">Film</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Stato Produzione</label>
+                        <select id="formSeriesState" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                            <option value="In corso">In corso</option>
+                            <option value="Finita">Finita</option>
+                            <option value="Cancellata">Cancellata</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- SELETTORE STAGIONE E PUNTATA -->
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-3">
+                    <p class="text-[10px] font-semibold text-indigo-400 uppercase">A che punto sei arrivato?</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[9px] text-slate-400 uppercase mb-1">Stagione N.</label>
+                            <input type="number" id="formCurrentSeason" min="1" value="1" onchange="recalculateEpisodes()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white text-center font-bold">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] text-slate-400 uppercase mb-1">Episodio N.</label>
+                            <input type="number" id="formCurrentEpInSeason" min="1" value="1" onchange="recalculateEpisodes()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white text-center font-bold">
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-slate-300 text-center pt-1 font-mono">
+                        Progressione: <span id="progressPreview" class="text-indigo-400 font-bold">S01E01</span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Piattaforma</label>
+                    <input type="text" id="formNotes" placeholder="Netflix, Prime Video..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <input type="hidden" id="formCurrentEp" value="1">
+                <input type="hidden" id="formTotalEp" value="1">
+                <input type="hidden" id="formCustomImage" value="">
+                <input type="hidden" id="formSeasonsData" value="">
+
+                <div class="flex justify-between items-center pt-4 border-t border-slate-800">
+                    <button type="button" id="deleteBtn" onclick="deleteCurrentItem()" class="bg-rose-500/10 text-rose-400 px-4 py-2.5 rounded-xl text-xs font-medium hidden">Elimina</button>
+                    <div class="flex gap-2 ml-auto">
+                        <button type="button" onclick="closeModal()" class="bg-slate-800 text-slate-300 px-4 py-2.5 rounded-xl text-xs font-medium">Annulla</button>
+                        <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/30">Salva</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script Definitivo -->
+    <script>
+        const TMDB_API_KEY = "33501d24ebf664a784d142d765bcf410";
+        let watchlist = JSON.parse(localStorage.getItem('cinetracker_vfinal_data')) || [];
+        let currentStatusFilter = 'Tutti';
+        let fxInterval = null;
+
+        function saveToLocalStorage() {
+            localStorage.setItem('cinetracker_vfinal_data', JSON.stringify(watchlist));
+        }
+
+        function resetDatabaseConfirm() {
+            if (confirm("Vuoi azzerare la libreria per caricare il file Excel da zero?")) {
+                watchlist = [];
+                localStorage.removeItem('cinetracker_vfinal_data');
+                filterWatchlist();
+            }
+        }
+
+        function updateStats() {
+            const completed = watchlist.filter(i => i.currentEp >= i.totalEp && i.totalEp > 0).length;
+            const inProgress = watchlist.length - completed;
+            document.getElementById('statCompleted').innerText = completed;
+            document.getElementById('statInProgress').innerText = inProgress;
+        }
+
+        // Recupero IA Locandine Ufficiali TMDB
+        async function fetchMetadataForTitle(title) {
+            try {
+                const res = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(title)}&language=it-IT`);
+                const data = await res.json();
+                if (data.results && data.results.length > 0) {
+                    const item = data.results.find(r => r.poster_path);
+                    if (item) {
+                        let totalEp = 1;
+                        let seriesState = 'In corso';
+                        let seasonsArray = [];
+                        let mediaType = item.media_type || (item.title ? 'movie' : 'tv');
+                        
+                        if (mediaType === 'tv' && item.id) {
+                            const detailRes = await fetch(`https://api.themoviedb.org/3/tv/${item.id}?api_key=${TMDB_API_KEY}&language=it-IT`);
+                            const detailData = await detailRes.json();
+                            if (detailData.number_of_episodes) totalEp = detailData.number_of_episodes;
+                            if (detailData.status === 'Ended' || detailData.status === 'Canceled') {
+                                seriesState = detailData.status === 'Canceled' ? 'Cancellata' : 'Finita';
+                            }
+                            if (detailData.seasons) {
+                                seasonsArray = detailData.seasons.filter(s => s.season_number > 0).map(s => ({
+                                    season_number: s.season_number,
+                                    episode_count: s.episode_count || 10
+                                }));
+                            }
+                        } else {
+                            seriesState = 'Finita';
+                        }
+
+                        return {
+                            poster: `https://image.tmdb.org/t/p/w500${item.poster_path}`,
+                            totalEp: totalEp,
+                            seriesState: seriesState,
+                            seasonsData: seasonsArray,
+                            type: mediaType === 'movie' ? 'film' : 'serie'
+                        };
+                    }
+                }
+            } catch (e) {}
+            return { 
+                poster: `https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&auto=format&fit=crop`, 
+                totalEp: 10,
+                seriesState: 'In corso',
+                seasonsData: [],
+                type: 'serie' 
+            };
+        }
+
+        async function autoFetchAIMetadataField() {
+            const title = document.getElementById('formTitle').value.trim();
+            if (!title) return;
+            const meta = await fetchMetadataForTitle(title);
+            document.getElementById('formCustomImage').value = meta.poster;
+            document.getElementById('formTotalEp').value = meta.totalEp;
+            document.getElementById('formType').value = meta.type;
+            document.getElementById('formSeriesState').value = meta.seriesState;
+            document.getElementById('formSeasonsData').value = JSON.stringify(meta.seasonsData);
+            recalculateEpisodes();
+        }
+
+        function recalculateEpisodes() {
+            const season = parseInt(document.getElementById('formCurrentSeason').value) || 1;
+            const epInSeason = parseInt(document.getElementById('formCurrentEpInSeason').value) || 1;
+            const seasonsDataStr = document.getElementById('formSeasonsData').value;
+            
+            let currentGlobal = epInSeason;
+            if (seasonsDataStr) {
+                try {
+                    const seasons = JSON.parse(seasonsDataStr);
+                    currentGlobal = 0;
+                    for (let s of seasons) {
+                        if (s.season_number < season) {
+                            currentGlobal += s.episode_count;
+                        } else if (s.season_number === season) {
+                            currentGlobal += epInSeason;
+                            break;
+                        }
+                    }
+                } catch(e) {}
+            }
+            document.getElementById('formCurrentEp').value = currentGlobal;
+            document.getElementById('progressPreview').innerText = `S${String(season).padStart(2,'0')}E${String(epInSeason).padStart(2,'0')}`;
+        }
+
+        async function runAIBulkEnhance() {
+            alert("Sincronizzazione IA in corso su tutte le copertine e dettagli...");
+            for (let item of watchlist) {
+                const meta = await fetchMetadataForTitle(item.title);
+                item.customImage = meta.poster;
+                item.totalEp = meta.totalEp;
+                item.seasonsData = meta.seasonsData;
+                item.seriesState = meta.seriesState;
+            }
+            saveToLocalStorage();
+            filterWatchlist();
+            alert("Libreria aggiornata con successo!");
+        }
+
+        async function importExcelFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(worksheet);
+
+                    if (json && json.length > 0) {
+                        watchlist = [];
+                        for (let index = 0; index < json.length; index++) {
+                            const row = json[index];
+                            const rawTitle = row.Titolo || row.title || row[Object.keys(row)[0]] || "Senza titolo";
+                            const meta = await fetchMetadataForTitle(rawTitle);
+
+                            // Lettura corretta stagione ed episodio
+                            let currentEp = parseInt(row["Episodi Visti"] || row.currentEp || 1);
+                            let totalEp = parseInt(row["Episodi Totali"] || row.totalEp || meta.totalEp);
+                            const statusStr = String(row.Stato || row.status || "").toLowerCase();
+
+                            // Se lo stato nell'excel è specificato come in corso o da guardare, gestiamo il progresso
+                            if (statusStr.includes('corso') || statusStr.includes('guardare')) {
+                                if (currentEp >= totalEp) currentEp = 1;
+                            } else if (statusStr.includes('completat') || statusStr.includes('finito')) {
+                                currentEp = totalEp;
+                            }
+
+                            watchlist.push({
+                                id: Date.now() + index,
+                                title: rawTitle,
+                                type: (row.Tipo || row.type || meta.type).toLowerCase().includes("film") ? "film" : "serie",
+                                seriesState: meta.seriesState,
+                                currentEp: currentEp,
+                                totalEp: totalEp,
+                                seasonsData: meta.seasonsData,
+                                customImage: meta.poster,
+                                notes: row["Note / Piattaforma"] || row.notes || "Netflix / Prime"
+                            });
+                        }
+                        saveToLocalStorage();
+                        filterWatchlist();
+                        alert(`Importati ${watchlist.length} titoli! Clicca su IA Sync per scaricare tutte le locandine.`);
+                    }
+                } catch (err) {
+                    alert("Errore caricamento Excel.");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function getSeasonAndEpisode(item) {
+            if (!item.seasonsData || item.seasonsData.length === 0) {
+                return `Ep. ${item.currentEp}`;
+            }
+            let acc = 0;
+            for (let s of item.seasonsData) {
+                if (item.currentEp <= acc + s.episode_count) {
+                    let epInSeason = item.currentEp - acc;
+                    return `S${String(s.season_number).padStart(2, '0')}E${String(epInSeason).padStart(2, '0')}`;
+                }
+                acc += s.episode_count;
+            }
+            return `Ep. ${item.currentEp}`;
+        }
+
+        function filterWatchlist() {
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            const body = document.body;
+            const canvas = document.getElementById('fxCanvas');
+            const badge = document.getElementById('modeBadge');
+            
+            canvas.classList.add('hidden');
+            if (fxInterval) clearInterval(fxInterval);
+            badge.classList.add('hidden');
+
+            if (query === 'matrix') {
+                badge.innerText = "🟩 MATRIX CODE"; badge.classList.remove('hidden'); canvas.classList.remove('hidden'); startMatrixRain();
+            } else if (query === 'hogwarts' || query === 'harrypotter') {
+                badge.innerText = "✨ HOGWARTS MAGICA"; badge.classList.remove('hidden'); canvas.classList.remove('hidden'); startHogwarts();
+            }
+
+            const filtered = watchlist.filter(item => {
+                const matchesQuery = item.title.toLowerCase().includes(query);
+                const isCompleted = item.currentEp >= item.totalEp && item.totalEp > 0;
+                let matchesStatus = true;
+                if (currentStatusFilter === 'Completati') matchesStatus = isCompleted;
+                else if (currentStatusFilter === 'In corso') matchesStatus = !isCompleted;
+                return matchesQuery && matchesStatus;
+            });
+
+            renderWatchlist(filtered);
+            updateStats();
+        }
+
+        function startMatrixRain() {
+            const canvas = document.getElementById('fxCanvas'); const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            const chars = '01CINETRACKER'; const drops = Array(Math.floor(canvas.width / 12)).fill(1);
+            fxInterval = setInterval(() => {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.08)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#22c55e'; ctx.font = '12px monospace';
+                drops.forEach((y, i) => { ctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * 12, y * 12); if (y * 12 > canvas.height && Math.random() > 0.95) drops[i] = 0; drops[i]++; });
+            }, 33);
+        }
+
+        function startHogwarts() {
+            const canvas = document.getElementById('fxCanvas'); const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            const sparks = Array.from({length: 40}, () => ({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: Math.random() * 2.5 + 1, s: Math.random() * 1 + 0.5 }));
+            fxInterval = setInterval(() => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#fef08a';
+                sparks.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill(); p.y -= p.s; if (p.y < 0) p.y = canvas.height; });
+            }, 30);
+        }
+
+        function renderWatchlist(items) {
+            const grid = document.getElementById('watchlistGrid');
+            grid.innerHTML = '';
+            if (items.length === 0) {
+                grid.innerHTML = `<div class="col-span-2 text-center py-16 text-slate-500 text-xs">Libreria vuota.<br>Clicca su <b>Importa Excel</b> in alto.</div>`;
+                return;
+            }
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between shadow-xl relative active:scale-95 transition transform";
+                const imgSrc = item.customImage || `https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&auto=format&fit=crop`;
+                
+                const isCompleted = item.currentEp >= item.totalEp && item.totalEp > 0;
+                
+                let badgeBg = 'bg-indigo-600/90';
+                if (item.seriesState?.includes('Finita')) badgeBg = 'bg-slate-700/90';
+                if (item.seriesState?.includes('Cancellata')) badgeBg = 'bg-rose-600/90';
+
+                const statusBadge = isCompleted ? 
+                    `<span class="absolute top-2 right-2 text-[9px] uppercase font-bold px-2 py-0.5 rounded-full backdrop-blur-md bg-emerald-600 text-white border border-white/20"><i class="fa-solid fa-check"></i> Completato</span>` :
+                    `<span class="absolute top-2 right-2 text-[9px] uppercase font-bold px-2 py-0.5 rounded-full backdrop-blur-md ${badgeBg} text-white border border-white/10">${item.seriesState || 'In corso'}</span>`;
+
+                const progressLabel = getSeasonAndEpisode(item);
+
+                card.innerHTML = `
+                    <div class="h-52 bg-slate-950 relative overflow-hidden flex items-center justify-center">
+                        <img src="${imgSrc}" class="w-full h-full object-cover" alt="${item.title}" onerror="this.src='https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&auto=format&fit=crop'">
+                        ${statusBadge}
+                    </div>
+                    <div class="p-3 flex flex-col gap-1.5">
+                        <h4 class="text-xs font-bold text-white truncate">${item.title}</h4>
+                        <p class="text-[10px] text-indigo-400 font-medium truncate"><i class="fa-solid fa-tv"></i> ${item.notes || 'Streaming'}</p>
+                        <div class="flex items-center justify-between mt-1 pt-2 border-t border-slate-800 text-[10px]">
+                            <span class="text-emerald-400 font-bold font-mono"><i class="fa-solid fa-play text-[8px]"></i> ${progressLabel}</span>
+                            <button onclick="openEditModal(${item.id})" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-pen text-xs"></i></button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function setStatusFilter(status, btnElement) {
+            currentStatusFilter = status;
+            document.querySelectorAll('.filter-pill').forEach(b => {
+                b.className = "filter-pill px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap bg-slate-900 text-slate-300 border border-slate-800";
+            });
+            if (btnElement) btnElement.className = "filter-pill px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap bg-indigo-600 text-white shadow-md";
+            filterWatchlist();
+        }
+
+        function openAddModal() {
+            document.getElementById('modalTitle').innerText = "Aggiungi Titolo";
+            document.getElementById('itemId').value = '';
+            document.getElementById('formTitle').value = '';
+            document.getElementById('formCurrentSeason').value = 1;
+            document.getElementById('formCurrentEpInSeason').value = 1;
+            document.getElementById('formNotes').value = '';
+            document.getElementById('formCustomImage').value = '';
+            document.getElementById('formSeasonsData').value = '';
+            document.getElementById('formSeriesState').value = 'In corso';
+            document.getElementById('deleteBtn').classList.add('hidden');
+            recalculateEpisodes();
+            document.getElementById('itemModal').classList.remove('hidden');
+        }
+
+        function openEditModal(id) {
+            const item = watchlist.find(i => i.id === id);
+            if (!item) return;
+            document.getElementById('modalTitle').innerText = "Modifica Titolo";
+            document.getElementById('itemId').value = item.id;
+            document.getElementById('formTitle').value = item.title;
+            document.getElementById('formType').value = item.type || 'serie';
+            document.getElementById('formSeriesState').value = item.seriesState || 'In corso';
+            document.getElementById('formNotes').value = item.notes || '';
+            document.getElementById('formCustomImage').value = item.customImage || '';
+            document.getElementById('formSeasonsData').value = JSON.stringify(item.seasonsData || []);
+            document.getElementById('formTotalEp').value = item.totalEp || 1;
+
+            let season = 1, epInSeason = item.currentEp || 1;
+            if (item.seasonsData && item.seasonsData.length > 0) {
+                let acc = 0;
+                let found = false;
+                for (let s of item.seasonsData) {
+                    if (item.currentEp <= acc + s.episode_count) {
+                        season = s.season_number;
+                        epInSeason = Math.max(1, item.currentEp - acc);
+                        found = true;
+                        break;
+                    }
+                    acc += s.episode_count;
+                }
+                if (!found) { season = 1; epInSeason = item.currentEp; }
+            }
+            document.getElementById('formCurrentSeason').value = season;
+            document.getElementById('formCurrentEpInSeason').value = epInSeason;
+            recalculateEpisodes();
+
+            document.getElementById('deleteBtn').classList.remove('hidden');
+            document.getElementById('itemModal').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('itemModal').classList.add('hidden'); }
+
+        async function saveItem(event) {
+            event.preventDefault();
+            const id = document.getElementById('itemId').value;
+            const title = document.getElementById('formTitle').value;
+            const type = document.getElementById('formType').value;
+            const seriesState = document.getElementById('formSeriesState').value;
+            const currentEp = parseInt(document.getElementById('formCurrentEp').value) || 1;
+            const totalEp = parseInt(document.getElementById('formTotalEp').value) || 1;
+            const seasonsData = JSON.parse(document.getElementById('formSeasonsData').value || '[]');
+            let customImage = document.getElementById('formCustomImage').value;
+            const notes = document.getElementById('formNotes').value;
+
+            if (!customImage) {
+                const meta = await fetchMetadataForTitle(title);
+                customImage = meta.poster;
+            }
+
+            if (id) {
+                const item = watchlist.find(i => i.id == id);
+                if (item) {
+                    item.title = title; item.type = type; item.seriesState = seriesState;
+                    item.currentEp = currentEp; item.totalEp = totalEp; item.seasonsData = seasonsData;
+                    item.customImage = customImage; item.notes = notes;
+                }
+            } else {
+                watchlist.unshift({ id: Date.now(), title, type, seriesState, currentEp, totalEp, seasonsData, customImage, notes });
+            }
+
+            saveToLocalStorage();
+            closeModal();
+            filterWatchlist();
+        }
+
+        function deleteCurrentItem() {
+            const id = document.getElementById('itemId').value;
+            if (id && confirm("Eliminare questo titolo?")) {
+                watchlist = watchlist.filter(i => i.id != id);
+                saveToLocalStorage();
+                closeModal();
+                filterWatchlist();
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => filterWatchlist());
+    </script>
+</body>
+</html>
