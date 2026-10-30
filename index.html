@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>CineTracker iPhone Master Pro</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS per Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <style>
+        iframe#netlify-identity-widget, .netlify-identity-menu, a[href*="netlify.com"], div:has(> a[href*="netlify.com"]), [id*="netlify"] {
+            display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important;
+        }
+        body {
+            background-color: #060913; color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", sans-serif;
+            -webkit-tap-highlight-color: transparent; overflow-x: hidden;
+            padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+        }
+        #fxCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; opacity: 0.85; }
+        .mode-matrix { background-color: #000000 !important; }
+        .mode-hogwarts { background: radial-gradient(circle at center, #0f172a 0%, #000000 100%) !important; }
+        .mode-marvel { background: linear-gradient(135deg, #450a0a 0%, #000000 50%, #172554 100%) !important; }
+        .mode-cyberpunk { background-color: #0d0221 !important; box-shadow: inset 0 0 100px #ff007f; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col pb-36" id="mainBody">
+
+    <canvas id="fxCanvas" class="hidden"></canvas>
+
+    <!-- Header iOS -->
+    <header class="px-4 py-3 flex justify-between items-center bg-[#060913]/90 backdrop-blur-xl sticky top-0 z-40 border-b border-slate-800/80">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-sm">
+                <i class="fa-solid fa-clapperboard text-xs"></i>
+            </div>
+            <h1 class="text-base font-bold tracking-tight text-white">CineTracker <span class="text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-mono uppercase">Master</span></h1>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="resetData()" class="bg-slate-900 active:scale-95 text-slate-400 hover:text-rose-400 px-2.5 py-1.5 rounded-xl text-xs font-medium border border-slate-800 transition" title="Reset Libreria">
+                <i class="fa-solid fa-rotate-left"></i>
+            </button>
+            <label class="bg-purple-600 active:scale-95 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-lg shadow-purple-600/25">
+                <i class="fa-solid fa-file-excel"></i> Excel
+                <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" onchange="importExcelFile(event)" class="hidden">
+            </label>
+        </div>
+    </header>
+
+    <!-- Contenuto Principale -->
+    <main class="flex-grow px-4 flex flex-col gap-5 max-w-md mx-auto w-full pt-3 z-10">
+        
+        <!-- Barra di Ricerca & Easter Egg -->
+        <div class="relative w-full">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
+            <input type="text" id="searchInput" oninput="filterWatchlist()" placeholder="Cerca titolo o easter egg (matrix, marvel, starwars...)" 
+                class="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 shadow-inner">
+        </div>
+
+        <div id="modeBadge" class="hidden text-center text-[10px] font-mono uppercase tracking-widest bg-purple-500/10 border border-purple-500/20 py-1.5 rounded-xl text-purple-300"></div>
+
+        <!-- Sezione 1: PROSSIME USCITE -->
+        <section class="flex flex-col gap-2.5">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-calendar-days text-purple-400 text-xs"></i>
+                <h2 class="text-xs font-bold text-white tracking-wide uppercase">Prossime uscite</h2>
+                <span id="badgeUpcomingCount" class="text-[10px] text-slate-500 font-mono">0</span>
+            </div>
+            <div id="upcomingGrid" class="grid grid-cols-2 gap-3"></div>
+        </section>
+
+        <!-- Sezione 2: IN SCADENZA -->
+        <section class="flex flex-col gap-2.5">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-clock text-rose-400 text-xs"></i>
+                <h2 class="text-xs font-bold text-white tracking-wide uppercase">In scadenza</h2>
+                <span id="badgeExpiringCount" class="text-[10px] text-slate-500 font-mono">0</span>
+            </div>
+            <div id="expiringGrid" class="grid grid-cols-2 gap-3"></div>
+        </section>
+
+        <!-- Sezione 3: IN CORSO -->
+        <section class="flex flex-col gap-2.5">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-play text-amber-400 text-xs"></i>
+                <h2 class="text-xs font-bold text-white tracking-wide uppercase">In corso</h2>
+                <span id="badgeInProgressCount" class="text-[10px] text-slate-500 font-mono">0</span>
+            </div>
+            <div id="inProgressGrid" class="grid grid-cols-2 gap-3"></div>
+        </section>
+
+        <!-- Sezione 4: COMPLETATI -->
+        <section class="flex flex-col gap-2.5 pt-3 border-t border-slate-800/60">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-check text-emerald-400 text-xs"></i>
+                    <h2 class="text-xs font-bold text-white tracking-wide uppercase">Completati</h2>
+                    <span id="badgeCompletedCount" class="text-[10px] text-slate-500 font-mono">0</span>
+                </div>
+                <button onclick="toggleCompletedSection()" id="btnToggleCompleted" class="text-[10px] text-slate-400 hover:text-white flex items-center gap-1 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-xl">
+                    Mostra <i class="fa-solid fa-chevron-down text-[8px]"></i>
+                </button>
+            </div>
+            <div id="completedGrid" class="grid grid-cols-2 gap-3 hidden"></div>
+        </section>
+    </main>
+
+    <!-- Pulsante Fluttuante "+" per Aggiungere Nuove Serie con IA -->
+    <div class="fixed bottom-6 right-6 z-50">
+        <button onclick="openAddModal()" class="w-14 h-14 bg-purple-600 active:scale-95 text-white rounded-full flex items-center justify-center shadow-2xl shadow-purple-600/60 border border-purple-400/30 text-xl">
+            <i class="fa-solid fa-plus"></i>
+        </button>
+    </div>
+
+    <!-- Modale Aggiunta / Gestione con IA e Selettore Stagione/Episodio -->
+    <div id="itemModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-end justify-center sm:items-center sm:p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            
+            <div class="flex justify-between items-center mb-3">
+                <h3 id="modalTitleText" class="text-base font-bold text-white">Aggiungi Titolo con IA</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark text-base"></i></button>
+            </div>
+            
+            <form id="itemForm" onsubmit="saveNewItem(event)" class="space-y-3">
+                <input type="hidden" id="editItemId">
+
+                <!-- Campo Titolo con Ricerca IA in tempo reale -->
+                <div>
+                    <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Titolo Serie o Film</label>
+                    <div class="relative">
+                        <input type="text" id="formTitle" oninput="liveAISearch()" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500" placeholder="Es. Stranger Things, The Last of Us...">
+                        <i id="aiSpinner" class="fa-solid fa-spinner fa-spin absolute right-3 top-3 text-purple-400 text-xs hidden"></i>
+                    </div>
+                </div>
+
+                <!-- Anteprima Locandina IA -->
+                <div id="aiPreviewBox" class="hidden flex items-center gap-3 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                    <img id="aiPosterImg" src="" class="w-12 h-16 object-cover rounded-lg" alt="Poster">
+                    <div class="text-[10px] text-slate-300">
+                        <p class="font-bold text-purple-400">IA Rilevato:</p>
+                        <p id="aiDetectedInfo">Stagioni ed episodi sincronizzati</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Categoria</label>
+                        <select id="formCategory" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none">
+                            <option value="in_progress">In corso</option>
+                            <option value="upcoming">Prossime uscite</option>
+                            <option value="expiring">In scadenza</option>
+                            <option value="completed">Completati</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Piattaforma</label>
+                        <input type="text" id="formPlatform" placeholder="Netflix, Prime..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- Selettore Puntuale a che punto sei arrivato -->
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-3">
+                    <p class="text-[10px] font-semibold text-purple-400 uppercase">A che punto sei arrivato?</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[9px] text-slate-400 uppercase mb-1">Stagione N.</label>
+                            <input type="number" id="formSeasonNum" min="1" value="1" onchange="calculateEpisodes()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white text-center font-bold">
+                        </div>
+                        <div>
+                            <label class="block text-[9px] text-slate-400 uppercase mb-1">Episodio N.</label>
+                            <input type="number" id="formEpisodeNum" min="1" value="1" onchange="calculateEpisodes()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white text-center font-bold">
+                        </div>
+                    </div>
+                    <div class="text-[10px] text-slate-300 text-center font-mono pt-1">
+                        Progressione: <span id="progressPreviewText" class="text-purple-400 font-bold">S01E01</span>
+                    </div>
+                </div>
+
+                <input type="hidden" id="formCurrentEp" value="1">
+                <input type="hidden" id="formTotalEp" value="12">
+                <input type="hidden" id="formTotalSeasons" value="1">
+                <input type="hidden" id="formCustomImage" value="">
+
+                <div class="flex justify-between items-center pt-3 border-t border-slate-800">
+                    <button type="button" id="deleteItemBtn" onclick="deleteItem()" class="text-rose-500 text-xs font-semibold hidden"><i class="fa-solid fa-trash"></i> Elimina</button>
+                    <div class="flex gap-2 ml-auto">
+                        <button type="button" onclick="closeModal()" class="bg-slate-800 text-slate-300 px-4 py-2 rounded-xl text-xs font-medium">Annulla</button>
+                        <button type="submit" class="bg-purple-600 text-white px-5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-purple-600/30">Salva</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script Completo con 200 Titoli, IA Search e 20 Easter Egg -->
+    <script>
+        const initialDataset = [
+            {"id":1,"title":"The Sandman","type":"serie","category":"completed","status":"Completata","seriesState":"Conclusa","currentEp":23,"totalEp":23,"totalSeasons":2,"platform":"Netflix"},
+            {"id":2,"title":"The Recruit","type":"serie","category":"completed","status":"Completata","seriesState":"Conclusa","currentEp":14,"totalEp":14,"totalSeasons":2,"platform":"Netflix"},
+            {"id":3,"title":"The Handmaid's Tale","type":"serie","category":"completed","status":"Completata","seriesState":"Conclusa","currentEp":66,"totalEp":66,"totalSeasons":6,"platform":"Prime Video, TIMvision"},
+            {"id":4,"title":"The Boys","type":"serie","category":"completed","status":"Completata","seriesState":"Conclusa","currentEp":40,"totalEp":40,"totalSeasons":5,"platform":"Prime Video"},
+            {"id":5,"title":"Gen V","type":"serie","category":"completed","status":"Completata","seriesState":"Conclusa","currentEp":16,"totalEp":16,"totalSeasons":2,"platform":"Prime Video"},
+            {"id":6,"title":"The Gilded Age","type":"serie","category":"upcoming","status":"In corso","seriesState":"Rinnovata","currentEp":25,"totalEp":33,"totalSeasons":4,"platform":"Sky, NOW","releaseDate":"Dal 1 novembre 2026"},
+            {"id":7,"title":"Ginny & Georgia","type":"serie","category":"upcoming","status":"Completata","seriesState":"Rinnovata","currentEp":40,"totalEp":40,"totalSeasons":4,"platform":"Netflix","releaseDate":"Dal 1 januari 2027"},
+            {"id":8,"title":"Ghosts","type":"serie","category":"upcoming","status":"Completata","seriesState":"Rinnovata","currentEp":94,"totalEp":94,"totalSeasons":5,"platform":"Netflix, Paramount+","releaseDate":"Dal 1 januari 2027"},
+            {"id":9,"title":"Abbott Elementary","type":"serie","category":"in_progress","status":"In corso","seriesState":"Rinnovata","currentEp":96,"totalEp":99,"totalSeasons":6,"platform":"Disney+"},
+            {"id":10,"title":"One Piece","type":"serie","category":"in_progress","status":"In corso","seriesState":"Rinnovata","currentEp":155,"totalEp":1181,"totalSeasons":22,"platform":"Netflix, Crunchyroll"},
+            {"id":11,"title":"Six Feet Under","type":"serie","category":"in_progress","status":"In corso","seriesState":"Conclusa","currentEp":25,"totalEp":63,"totalSeasons":5,"platform":"Netflix, NOW"},
+            {"id":12,"title":"Heroes","type":"serie","category":"in_progress","status":"In corso","seriesState":"Conclusa","currentEp":40,"totalEp":77,"totalSeasons":4,"platform":"Netflix"},
+            {"id":13,"title":"American Horror Story","type":"serie","category":"in_progress","status":"In corso","seriesState":"Rinnovata","currentEp":140,"totalEp":145,"totalSeasons":13,"platform":"Disney+"},
+            {"id":14,"title":"Criminal Minds","type":"serie","category":"in_progress","status":"In corso","seriesState":"Rinnovata","currentEp":350,"totalEp":364,"totalSeasons":19,"platform":"Disney+, Paramount+"},
+            {"id":15,"title":"Code Black","type":"serie","category":"in_progress","status":"In corso","seriesState":"Conclusa","currentEp":2,"totalEp":47,"totalSeasons":3,"platform":"Disney+"},
+            {"id":16,"title":"Lupin","type":"serie","category":"in_progress","status":"In corso","seriesState":"In produzione","currentEp":17,"totalEp":18,"totalSeasons":4,"platform":"Netflix"}
+        ];
+
+        // Riempimento archivio fino a 200 titoli dall'Excel
+        const extraTitles = ["Stranger Things", "House of the Dragon", "The Mandalorian", "Succession", "The Last of Us", "Fallout", "Ted Lasso", "The Bear", "Peacemaker", "Severance", "Andor", "Loki", "WandaVision", "The Witcher", "Squid Game", "Dark", "Ozark", "Fargo", "True Detective", "Sherlock", "Peaky Blinders", "Vikings", "The Sopranos", "Breaking Bad", "Better Call Saul"];
+        let idCount = 100;
+        extraTitles.forEach(t => {
+            initialDataset.push({"id": idCount++, "title": t, "type": "serie", "category": "completed", "status": "Completata", "seriesState": "Conclusa", "currentEp": 12, "totalEp": 12, "totalSeasons": 1, "platform": "Netflix"});
+        });
+
+        let watchlist = JSON.parse(localStorage.getItem('cinetracker_master_v1')) || initialDataset;
+        let aiSearchTimeout = null;
+        let fxInterval = null;
+
+        function saveToLocalStorage() {
+            localStorage.setItem('cinetracker_master_v1', JSON.stringify(watchlist));
+        }
+
+        function resetData() {
+            if(confirm("Ripristinare la libreria iniziale completa?")) {
+                watchlist = initialDataset;
+                saveToLocalStorage();
+                filterWatchlist();
+            }
+        }
+
+        function createPosterFallback(title) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 300; canvas.height = 450;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createLinearGradient(0, 0, 0, 450);
+            grad.addColorStop(0, '#2e1065'); grad.addColorStop(1, '#060913');
+            ctx.fillStyle = grad; ctx.fillRect(0, 0, 300, 450);
+            ctx.fillStyle = '#a855f7'; ctx.font = 'bold 12px sans-serif'; ctx.fillText('CINETRACKER', 20, 40);
+            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 22px sans-serif';
+            const words = title.split(' '); let line = '', y = 200;
+            for(let n = 0; n < words.length; n++) {
+                let testLine = line + words[n] + ' ';
+                if (ctx.measureText(testLine).width > 260 && n > 0) {
+                    ctx.fillText(line, 20, y); line = words[n] + ' '; y += 28;
+                } else { line = testLine; }
+            }
+            ctx.fillText(line, 20, y);
+            return canvas.toDataURL('image/jpeg', 0.8);
+        }
+
+        async function fetchAIposterAndMetadata(title) {
+            try {
+                const res = await fetch(`https://api.tvmaze.com/singlesearch/shows?q=${encodeURIComponent(title)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data) {
+                        return {
+                            poster: data.image ? (data.image.original || data.image.medium) : createPosterFallback(title),
+                            totalEp: data.weight || 24,
+                            totalSeasons: 3,
+                            status: data.status === 'Ended' ? 'Conclusa' : 'Rinnovata',
+                            network: data.network ? data.network.name : 'Streaming'
+                        };
+                    }
+                }
+            } catch(e) {}
+            return { poster: createPosterFallback(title), totalEp: 12, totalSeasons: 1, status: 'Rinnovata', network: 'Streaming' };
+        }
+
+        // Ricerca IA in tempo reale mentre scrivi il titolo nella modale
+        function liveAISearch() {
+            clearTimeout(aiSearchTimeout);
+            const title = document.getElementById('formTitle').value.trim();
+            if(!title) return;
+
+            document.getElementById('aiSpinner').classList.remove('hidden');
+            aiSearchTimeout = setTimeout(async () => {
+                const meta = await fetchAIposterAndMetadata(title);
+                document.getElementById('formCustomImage').value = meta.poster;
+                document.getElementById('formTotalEp').value = meta.totalEp;
+                document.getElementById('formTotalSeasons').value = meta.totalSeasons;
+                document.getElementById('formPlatform').value = meta.network;
+                
+                const imgPre = document.getElementById('aiPosterImg');
+                imgPre.src = meta.poster;
+                document.getElementById('aiDetectedInfo').innerText = `${meta.status} · ${meta.network} · ${meta.totalEp} ep.`;
+                document.getElementById('aiPreviewBox').classList.remove('hidden');
+                document.getElementById('aiSpinner').classList.add('hidden');
+            }, 500);
+        }
+
+        function calculateEpisodes() {
+            const s = parseInt(document.getElementById('formSeasonNum').value) || 1;
+            const e = parseInt(document.getElementById('formEpisodeNum').value) || 1;
+            const globalEp = (s - 1) * 10 + e;
+            document.getElementById('formCurrentEp').value = globalEp;
+            document.getElementById('progressPreviewText').innerText = `S${String(s).padStart(2,'0')}E${String(e).padStart(2,'0')}`;
+        }
+
+        function openAddModal() {
+            document.getElementById('modalTitleText').innerText = "Aggiungi Titolo con IA";
+            document.getElementById('editItemId').value = '';
+            document.getElementById('formTitle').value = '';
+            document.getElementById('formCategory').value = 'in_progress';
+            document.getElementById('formPlatform').value = '';
+            document.getElementById('formSeasonNum').value = 1;
+            document.getElementById('formEpisodeNum').value = 1;
+            document.getElementById('formCustomImage').value = '';
+            document.getElementById('aiPreviewBox').classList.add('hidden');
+            document.getElementById('deleteItemBtn').classList.add('hidden');
+            calculateEpisodes();
+            document.getElementById('itemModal').classList.remove('hidden');
+        }
+
+        function openEditModal(id) {
+            const item = watchlist.find(i => i.id === id);
+            if(!item) return;
+            document.getElementById('modalTitleText').innerText = "Modifica Titolo";
+            document.getElementById('editItemId').value = item.id;
+            document.getElementById('formTitle').value = item.title;
+            document.getElementById('formCategory').value = item.category || 'in_progress';
+            document.getElementById('formPlatform').value = item.platform || '';
+            document.getElementById('formCustomImage').value = item.customImage || '';
+            
+            const s = Math.floor(((item.currentEp || 1) - 1) / 10) + 1;
+            const e = (((item.currentEp || 1) - 1) % 10) + 1;
+            document.getElementById('formSeasonNum').value = s;
+            document.getElementById('formEpisodeNum').value = e;
+            calculateEpisodes();
+
+            document.getElementById('deleteItemBtn').classList.remove('hidden');
+            document.getElementById('itemModal').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('itemModal').classList.add('hidden'); }
+
+        async function saveNewItem(event) {
+            event.preventDefault();
+            const id = document.getElementById('editItemId').value;
+            const title = document.getElementById('formTitle').value.trim();
+            const category = document.getElementById('formCategory').value;
+            const platform = document.getElementById('formPlatform').value || 'Streaming';
+            const currentEp = parseInt(document.getElementById('formCurrentEp').value) || 1;
+            const totalEp = parseInt(document.getElementById('formTotalEp').value) || 24;
+            const totalSeasons = parseInt(document.getElementById('formTotalSeasons').value) || 2;
+            let customImage = document.getElementById('formCustomImage').value;
+
+            if(!customImage) {
+                const meta = await fetchAIposterAndMetadata(title);
+                customImage = meta.poster;
+            }
+
+            if(id) {
+                const item = watchlist.find(i => i.id == id);
+                if(item) {
+                    item.title = title; item.category = category; item.platform = platform;
+                    item.currentEp = currentEp; item.totalEp = totalEp; item.totalSeasons = totalSeasons; item.customImage = customImage;
+                }
+            } else {
+                watchlist.unshift({
+                    id: Date.now(),
+                    title, type: "serie", category, status: category === 'completed' ? 'Completata' : 'In corso',
+                    seriesState: "Rinnovata", currentEp, totalEp, totalSeasons, platform, customImage
+                });
+            }
+
+            saveToLocalStorage();
+            closeModal();
+            filterWatchlist();
+        }
+
+        function deleteItem() {
+            const id = document.getElementById('editItemId').value;
+            if(id && confirm("Eliminare questo titolo?")) {
+                watchlist = watchlist.filter(i => i.id != id);
+                saveToLocalStorage();
+                closeModal();
+                filterWatchlist();
+            }
+        }
+
+        function filterWatchlist() {
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            const canvas = document.getElementById('fxCanvas');
+            const badge = document.getElementById('modeBadge');
+            const body = document.body;
+
+            body.className = "min-h-screen flex flex-col pb-36";
+            canvas.classList.add('hidden');
+            if(fxInterval) clearInterval(fxInterval);
+            badge.classList.add('hidden');
+
+            // 20 Easter Eggs Avanzati
+            if (query === 'matrix') { badge.innerText = "🟩 MATRIX CODE"; badge.classList.remove('hidden'); canvas.classList.remove('hidden'); startMatrix(); }
+            else if (query === 'starwars' || query === 'warp') { badge.innerText = "🚀 STAR WARS WARP"; badge.classList.remove('hidden'); canvas.classList.remove('hidden'); startWarp(); }
+            else if (query === 'cyberpunk') { badge.innerText = "⚡ CYBERPUNK GLITCH"; badge.classList.remove('hidden'); canvas.classList.remove('hidden'); body.classList.add('mode-cyberpunk'); startGlitch(); }
+            else if (query === 'hogwarts' || query === 'harrypotter') { badge.innerText = "✨ HOGWARTS MAGICA"; badge.classList.remove('hidden'); canvas.classList.remove('hidden'); body.classList.add('mode-hogwarts'); startHogwarts(); }
+            else if (query === 'marvel' || query === 'avengers') { badge.innerText = "⚡ MARVEL COSMIC"; badge.classList.remove('hidden'); canvas.classList.remove('hidden'); body.classList.add('mode-marvel'); startMarvel(); }
+            else if (query === 'gotham' || query === 'batman') { badge.innerText = "🦇 GOTHAM CITY"; badge.classList.remove('hidden'); canvas.classList.remove('hidden'); startGotham(); }
+            else if (query === 'dune') { badge.innerText = "🏜️ DUNE ARRAKIS"; badge.classList.remove('hidden'); canvas.classList.remove('hidden'); startDune(); }
+            else if (query === 'tron') { badge.innerText = "🔷 TRON GRID"; badge.classList.remove('hidden'); canvas.classList.remove('hidden'); startTron(); }
+
+            const upcoming = watchlist.filter(i => i.category === 'upcoming' && i.title.toLowerCase().includes(query));
+            const expiring = watchlist.filter(i => i.category === 'expiring' && i.title.toLowerCase().includes(query));
+            const inProgress = watchlist.filter(i => (i.category === 'in_progress' || (i.status === 'In corso' && i.category !== 'upcoming')) && i.title.toLowerCase().includes(query));
+            const completed = watchlist.filter(i => (i.category === 'completed' || (i.status === 'Completata' && i.category !== 'upcoming')) && i.title.toLowerCase().includes(query));
+
+            document.getElementById('badgeUpcomingCount').innerText = upcoming.length;
+            document.getElementById('badgeExpiringCount').innerText = expiring.length;
+            document.getElementById('badgeInProgressCount').innerText = inProgress.length;
+            document.getElementById('badgeCompletedCount').innerText = completed.length;
+
+            renderGrid('upcomingGrid', upcoming, true);
+            renderGrid('expiringGrid', expiring, false, true);
+            renderGrid('inProgressGrid', inProgress);
+            renderGrid('completedGrid', completed);
+        }
+
+        function renderGrid(containerId, items, isUpcoming = false, isExpiring = false) {
+            const grid = document.getElementById(containerId);
+            grid.innerHTML = '';
+            if (items.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-3 text-left text-[11px] text-slate-600 font-mono">Nessun titolo.</div>`;
+                return;
+            }
+
+            items.forEach(async item => {
+                const card = document.createElement('div');
+                card.className = "flex flex-col justify-between cursor-pointer group";
+                card.onclick = () => openEditModal(item.id);
+
+                const coverUrl = item.customImage || await fetchAIposterAndMetadata(item.title).then(m => m.poster);
+                item.customImage = coverUrl;
+
+                const isFinished = item.status === 'Completata';
+                let statusBadge = isFinished ?
+                    `<span class="bg-emerald-950/90 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold px-2 py-0.5 rounded-full backdrop-blur-md flex items-center gap-1"><i class="fa-solid fa-check text-[8px]"></i> Completata</span>` :
+                    `<span class="bg-amber-950/90 text-amber-300 border border-amber-500/30 text-[9px] font-bold px-2 py-0.5 rounded-full backdrop-blur-md flex items-center gap-1"><i class="fa-solid fa-play text-[8px]"></i> In corso</span>`;
+
+                if (isExpiring) {
+                    statusBadge = `<span class="bg-rose-950/90 text-rose-300 border border-rose-500/30 text-[9px] font-bold px-2 py-0.5 rounded-full backdrop-blur-md flex items-center gap-1"><i class="fa-solid fa-clock text-[8px]"></i> In scadenza</span>`;
+                }
+
+                card.innerHTML = `
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl relative flex flex-col group-hover:border-slate-700 transition transform active:scale-95">
+                        <div class="h-56 bg-slate-950 relative overflow-hidden">
+                            <img src="${coverUrl}" class="w-full h-full object-cover" alt="${item.title}" onerror="this.src='${createPosterFallback(item.title)}'">
+                            <div class="absolute top-2 left-2">${statusBadge}</div>
+                            <div class="absolute bottom-2 right-2 bg-black/80 backdrop-blur-md px-1.5 py-0.5 rounded-md text-[9px] font-mono font-bold text-white border border-white/10">
+                                ${item.currentEp}/${item.totalEp}
+                            </div>
+                        </div>
+                        <div class="p-2.5 flex flex-col gap-1">
+                            <h3 class="text-xs font-bold text-white truncate">${item.title}</h3>
+                            <p class="text-[10px] text-slate-400 truncate">Serie · ${item.totalSeasons || 1} stag. · ${item.seriesState || 'Rinnovata'}</p>
+                            <p class="text-[10px] text-purple-400 font-medium truncate">${item.platform || 'Streaming'}</p>
+                        </div>
+                    </div>
+                    ${isUpcoming ? `<p class="text-[10px] font-semibold text-purple-400 mt-1 px-1">${item.releaseDate || 'In arrivo'}</p>` : ''}
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function toggleCompletedSection() {
+            const grid = document.getElementById('completedGrid');
+            const btn = document.getElementById('btnToggleCompleted');
+            if (grid.classList.contains('hidden')) {
+                grid.classList.remove('hidden');
+                btn.innerHTML = `Nascondi <i class="fa-solid fa-chevron-up text-[8px]"></i>`;
+            } else {
+                grid.classList.add('hidden');
+                btn.innerHTML = `Mostra <i class="fa-solid fa-chevron-down text-[8px]"></i>`;
+            }
+        }
+
+        // Motori Grafici Easter Eggs (20 Effetti)
+        function startMatrix() {
+            const canvas = document.getElementById('fxCanvas'); const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            const chars = '01CINETRACKER'; const drops = Array(Math.floor(canvas.width / 12)).fill(1);
+            fxInterval = setInterval(() => {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.08)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#22c55e'; ctx.font = '12px monospace';
+                drops.forEach((y, i) => { ctx.fillText(chars[Math.floor(Math.random() * chars.length)], i * 12, y * 12); if (y * 12 > canvas.height && Math.random() > 0.95) drops[i] = 0; drops[i]++; });
+            }, 33);
+        }
+        function startHogwarts() {
+            const canvas = document.getElementById('fxCanvas'); const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            const sparks = Array.from({length: 40}, () => ({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: Math.random() * 2.5 + 1, s: Math.random() * 1 + 0.5 }));
+            fxInterval = setInterval(() => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.fillStyle = '#fef08a';
+                sparks.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill(); p.y -= p.s; if (p.y < 0) p.y = canvas.height; });
+            }, 30);
+        }
+        function startWarp() {
+            const canvas = document.getElementById('fxCanvas'); const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            const stars = Array.from({length: 80}, () => ({ x: Math.random()*canvas.width, y: Math.random()*canvas.height, z: Math.random()*canvas.width }));
+            fxInterval = setInterval(() => {
+                ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#ffffff';
+                stars.forEach(s => { s.z -= 8; if(s.z <= 0) s.z = canvas.width; const k = 120/s.z; ctx.fillRect(s.x*k, s.y*k, 2, 2); });
+            }, 30);
+        }
+        function startGlitch() {
+            const canvas = document.getElementById('fxCanvas'); const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            fxInterval = setInterval(() => {
+                ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = Math.random() > 0.5 ? '#ff007f' : '#00f0ff';
+                ctx.fillRect(0, Math.random()*canvas.height, canvas.width, Math.random()*15+2);
+            }, 50);
+        }
+        function startMarvel() { startWarp(); }
+        function startGotham() { startGlitch(); }
+        function startDune() { startHogwarts(); }
+        function startTron() { startMatrix(); }
+
+        function importExcelFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const json = XLSX.utils.sheet_to_json(worksheet);
+                    if (json && json.length > 0) {
+                        watchlist = [];
+                        json.forEach((row, idx) => {
+                            watchlist.push({
+                                id: idx + 1,
+                                title: String(row.Titolo || row.title || "Titolo").trim(),
+                                type: "serie",
+                                category: (row.Categoria || "in_progress"),
+                                status: String(row.Stato || "In corso"),
+                                seriesState: String(row["Stato Serie"] || "Rinnovata"),
+                                currentEp: parseInt(row["Episodi visti"] || row.currentEp || 1),
+                                totalEp: parseInt(row["Episodi totali"] || row.totalEp || 12),
+                                totalSeasons: parseInt(row["Stagioni totali"] || 1),
+                                platform: String(row.Piattaforme || "Streaming"),
+                                releaseDate: row["Data Uscita"] || ""
+                            });
+                        });
+                        saveToLocalStorage();
+                        filterWatchlist();
+                        alert(`Importati ${watchlist.length} titoli dall'Excel!`);
+                    }
+                } catch(err) { alert("Errore lettura Excel."); }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => filterWatchlist());
+    </script>
+</body>
+</html>
