@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>CineTracker Final Edition</title>
+    <title>CineTracker iPhone Native</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
@@ -16,16 +16,16 @@
             display: none !important; visibility: hidden !important; opacity: 0 !important; pointer-events: none !important;
         }
         body {
-            background-color: #0b0f19; color: #f8fafc;
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", sans-serif;
+            background-color: #090d16; color: #f8fafc;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, sans-serif;
             -webkit-tap-highlight-color: transparent; overflow-x: hidden;
             padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
         }
-        #fxCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; opacity: 0.9; }
+        #fxCanvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; opacity: 0.85; }
         
-        .mode-hogwarts { background: radial-gradient(circle at center, #0f172a 0%, #000000 100%) !important; box-shadow: inset 0 0 100px #6366f1; }
+        .mode-hogwarts { background: radial-gradient(circle at center, #0f172a 0%, #000000 100%) !important; }
         .mode-marvel { background: linear-gradient(135deg, #450a0a 0%, #000000 50%, #172554 100%) !important; }
-        .mode-gotham { background-color: #030712 !important; filter: contrast(1.4); }
+        .mode-gotham { background-color: #030712 !important; filter: contrast(1.3); }
         .mode-cyberpunk { background-color: #0d0221 !important; box-shadow: inset 0 0 100px #ff007f; }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -36,72 +36,74 @@
 
     <canvas id="fxCanvas" class="hidden"></canvas>
 
-    <!-- Header -->
-    <header class="px-4 py-3 flex justify-between items-center bg-[#0b0f19]/90 backdrop-blur-xl sticky top-0 z-40 border-b border-slate-800">
-        <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-            <span>CineTracker</span>
-            <span class="text-[9px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full font-mono uppercase">PRO</span>
-        </h1>
+    <!-- Header iOS -->
+    <header class="px-4 py-3 flex justify-between items-center bg-[#090d16]/90 backdrop-blur-xl sticky top-0 z-40 border-b border-slate-800/80">
         <div class="flex items-center gap-2">
-            <button onclick="resetDatabaseConfirm()" class="bg-rose-500/10 text-rose-400 px-2.5 py-1.5 rounded-xl text-xs font-medium border border-rose-500/20" title="Reset Libreria">
-                <i class="fa-solid fa-trash-arrow-up"></i> Reset
+            <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
+                <span>CineTracker</span>
+                <span class="text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full font-mono uppercase">ULTIMATE</span>
+            </h1>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="resetDatabaseConfirm()" class="bg-rose-500/10 active:scale-95 text-rose-400 px-2.5 py-1.5 rounded-xl text-xs font-medium border border-rose-500/20">
+                <i class="fa-solid fa-rotate-right"></i> Reset
             </button>
-            <label class="bg-indigo-600 active:scale-95 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-lg shadow-indigo-600/20">
-                <i class="fa-solid fa-file-arrow-up"></i> Importa Excel
+            <label class="bg-purple-600 active:scale-95 text-white px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-lg shadow-purple-600/25">
+                <i class="fa-solid fa-file-excel"></i> Importa Excel
                 <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" onchange="importExcelFile(event)" class="hidden">
             </label>
         </div>
     </header>
 
-    <!-- Main Content -->
+    <!-- Contenuto Principale -->
     <main class="flex-grow px-4 flex flex-col gap-3 max-w-md mx-auto w-full pt-3 z-10">
         
-        <!-- Search bar -->
+        <!-- Barra di ricerca / Easter Egg -->
         <div class="relative w-full">
             <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
-            <input type="text" id="searchInput" oninput="filterWatchlist()" placeholder="Cerca titolo o easter egg (matrix, hogwarts...)" 
-                class="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 shadow-inner">
+            <input type="text" id="searchInput" oninput="filterWatchlist()" placeholder="Cerca titolo o easter egg (matrix, hogwarts, marvel...)" 
+                class="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 shadow-inner">
         </div>
 
-        <div id="modeBadge" class="hidden text-center text-[10px] font-mono uppercase tracking-widest bg-white/5 border border-white/10 py-1.5 rounded-xl text-indigo-300"></div>
+        <div id="modeBadge" class="hidden text-center text-[10px] font-mono uppercase tracking-widest bg-white/5 border border-white/10 py-1.5 rounded-xl text-purple-300"></div>
 
-        <!-- Stats -->
+        <!-- Contatori Statistiche -->
         <div class="grid grid-cols-2 gap-2.5">
-            <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-3 flex items-center gap-3">
-                <div class="bg-emerald-500/10 text-emerald-400 p-2.5 rounded-xl"><i class="fa-solid fa-check text-sm"></i></div>
-                <div>
-                    <p class="text-[9px] uppercase font-bold text-slate-400">Completati</p>
-                    <p id="statCompleted" class="text-sm font-extrabold text-white">0</p>
-                </div>
-            </div>
-            <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-3 flex items-center gap-3">
+            <div class="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-3 flex items-center gap-3">
                 <div class="bg-indigo-500/10 text-indigo-400 p-2.5 rounded-xl"><i class="fa-solid fa-play text-sm"></i></div>
                 <div>
                     <p class="text-[9px] uppercase font-bold text-slate-400">In Corso</p>
                     <p id="statInProgress" class="text-sm font-extrabold text-white">0</p>
                 </div>
             </div>
+            <div class="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-3 flex items-center gap-3">
+                <div class="bg-emerald-500/10 text-emerald-400 p-2.5 rounded-xl"><i class="fa-solid fa-check text-sm"></i></div>
+                <div>
+                    <p class="text-[9px] uppercase font-bold text-slate-400">Completati</p>
+                    <p id="statCompleted" class="text-sm font-extrabold text-white">0</p>
+                </div>
+            </div>
         </div>
 
-        <!-- Filters -->
+        <!-- Filtri Stato -->
         <div class="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-            <button onclick="setStatusFilter('Tutti', this)" class="filter-pill px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap bg-indigo-600 text-white shadow-md transition">Tutti</button>
+            <button onclick="setStatusFilter('Tutti', this)" class="filter-pill px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap bg-purple-600 text-white shadow-md transition">Tutti</button>
             <button onclick="setStatusFilter('In corso', this)" class="filter-pill px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap bg-slate-900 text-slate-300 border border-slate-800">In Corso</button>
             <button onclick="setStatusFilter('Completati', this)" class="filter-pill px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap bg-slate-900 text-slate-300 border border-slate-800">Completati</button>
         </div>
 
-        <!-- Grid -->
+        <!-- Griglia Schede -->
         <div id="watchlistGrid" class="grid grid-cols-2 gap-3 pb-32"></div>
     </main>
 
-    <!-- Navigation -->
+    <!-- Navigazione Inferiore -->
     <nav class="fixed bottom-6 left-4 right-4 bg-slate-900/95 backdrop-blur-2xl border border-slate-800 px-6 py-3 flex justify-around items-center z-50 max-w-sm mx-auto rounded-3xl shadow-2xl">
-        <button onclick="filterWatchlist()" class="flex flex-col items-center gap-1 text-indigo-400">
+        <button onclick="filterWatchlist()" class="flex flex-col items-center gap-1 text-purple-400">
             <i class="fa-solid fa-house text-base"></i>
             <span class="text-[10px] font-medium">Libreria</span>
         </button>
         <button onclick="openAddModal()" class="flex flex-col items-center gap-1 text-slate-400 hover:text-white">
-            <div class="bg-indigo-600 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg shadow-indigo-600/40 -mt-3">
+            <div class="bg-purple-600 text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg shadow-purple-600/40 -mt-3">
                 <i class="fa-solid fa-plus text-sm"></i>
             </div>
             <span class="text-[10px] font-medium">Aggiungi</span>
@@ -112,7 +114,7 @@
         </button>
     </nav>
 
-    <!-- Modal Gestione Titolo -->
+    <!-- Modale Gestione Titolo -->
     <div id="itemModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-end justify-center sm:items-center sm:p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[85vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4">
@@ -125,30 +127,30 @@
                 
                 <div>
                     <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Titolo</label>
-                    <input type="text" id="formTitle" onblur="autoFetchAIMetadataField()" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500" placeholder="Es. The Boys">
+                    <input type="text" id="formTitle" onblur="autoFetchAIMetadataField()" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500" placeholder="Es. Dexter">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Tipo</label>
-                        <select id="formType" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                        <select id="formType" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500">
                             <option value="serie">Serie TV</option>
                             <option value="film">Film</option>
                         </select>
                     </div>
                     <div>
                         <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Stato Produzione</label>
-                        <select id="formSeriesState" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
-                            <option value="In corso">In corso</option>
-                            <option value="Finita">Finita</option>
+                        <select id="formSeriesState" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500">
+                            <option value="In corso">In corso / Rinnovata</option>
+                            <option value="Finita">Finita / Conclusa</option>
                             <option value="Cancellata">Cancellata</option>
                         </select>
                     </div>
                 </div>
 
-                <!-- SELETTORE STAGIONE E PUNTATA -->
+                <!-- Selettore Puntuale Stagione / Episodio -->
                 <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-3">
-                    <p class="text-[10px] font-semibold text-indigo-400 uppercase">A che punto sei arrivato?</p>
+                    <p class="text-[10px] font-semibold text-purple-400 uppercase">Dove sei arrivato?</p>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="block text-[9px] text-slate-400 uppercase mb-1">Stagione N.</label>
@@ -160,17 +162,17 @@
                         </div>
                     </div>
                     <div class="text-[10px] text-slate-300 text-center pt-1 font-mono">
-                        Progressione: <span id="progressPreview" class="text-indigo-400 font-bold">S01E01</span>
+                        Progressione: <span id="progressPreview" class="text-purple-400 font-bold">S01E01</span>
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Piattaforma</label>
-                    <input type="text" id="formNotes" placeholder="Netflix, Prime Video..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    <input type="text" id="formNotes" placeholder="Netflix, Prime Video..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500">
                 </div>
 
                 <input type="hidden" id="formCurrentEp" value="1">
-                <input type="hidden" id="formTotalEp" value="1">
+                <input type="hidden" id="formTotalEp" value="12">
                 <input type="hidden" id="formCustomImage" value="">
                 <input type="hidden" id="formSeasonsData" value="">
 
@@ -178,28 +180,28 @@
                     <button type="button" id="deleteBtn" onclick="deleteCurrentItem()" class="bg-rose-500/10 text-rose-400 px-4 py-2.5 rounded-xl text-xs font-medium hidden">Elimina</button>
                     <div class="flex gap-2 ml-auto">
                         <button type="button" onclick="closeModal()" class="bg-slate-800 text-slate-300 px-4 py-2.5 rounded-xl text-xs font-medium">Annulla</button>
-                        <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/30">Salva</button>
+                        <button type="submit" class="bg-purple-600 text-white px-5 py-2.5 rounded-xl text-xs font-semibold shadow-lg shadow-purple-600/30">Salva</button>
                     </div>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Script Definitivo -->
+    <!-- Script Principale -->
     <script>
         const TMDB_API_KEY = "33501d24ebf664a784d142d765bcf410";
-        let watchlist = JSON.parse(localStorage.getItem('cinetracker_vfinal_data')) || [];
+        let watchlist = JSON.parse(localStorage.getItem('cinetracker_vultimate_data')) || [];
         let currentStatusFilter = 'Tutti';
         let fxInterval = null;
 
         function saveToLocalStorage() {
-            localStorage.setItem('cinetracker_vfinal_data', JSON.stringify(watchlist));
+            localStorage.setItem('cinetracker_vultimate_data', JSON.stringify(watchlist));
         }
 
         function resetDatabaseConfirm() {
-            if (confirm("Vuoi azzerare la libreria per caricare il file Excel da zero?")) {
+            if (confirm("Vuoi azzerare la libreria per ricaricare l'Excel da capo?")) {
                 watchlist = [];
-                localStorage.removeItem('cinetracker_vfinal_data');
+                localStorage.removeItem('cinetracker_vultimate_data');
                 filterWatchlist();
             }
         }
@@ -211,35 +213,68 @@
             document.getElementById('statInProgress').innerText = inProgress;
         }
 
-        // Recupero IA Locandine Ufficiali TMDB
+        // Generatore di locandina placeholder dinamica con titolo se TMDB fallisce
+        function createTitlePoster(title) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 300; canvas.height = 450;
+            const ctx = canvas.getContext('2d');
+            
+            const grad = ctx.createLinearGradient(0, 0, 0, 450);
+            grad.addColorStop(0, '#1e1b4b'); grad.addColorStop(1, '#090d16');
+            ctx.fillStyle = grad; ctx.fillRect(0, 0, 300, 450);
+            
+            ctx.fillStyle = '#818cf8'; ctx.font = 'bold 12px sans-serif';
+            ctx.fillText('CINETRACKER', 20, 40);
+            
+            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 22px sans-serif';
+            
+            const words = title.split(' ');
+            let line = '', y = 200;
+            for(let n = 0; n < words.length; n++) {
+                let testLine = line + words[n] + ' ';
+                if (ctx.measureText(testLine).width > 260 && n > 0) {
+                    ctx.fillText(line, 20, y);
+                    line = words[n] + ' '; y += 28;
+                } else { line = testLine; }
+            }
+            ctx.fillText(line, 20, y);
+            return canvas.toDataURL('image/jpeg', 0.8);
+        }
+
+        // Fetch TMDB Robusto con Retry e Proxy Fallback
         async function fetchMetadataForTitle(title) {
             try {
-                const res = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(title)}&language=it-IT`);
+                const searchUrl = `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(title)}&language=it-IT`;
+                const res = await fetch(searchUrl);
+                if (!res.ok) throw new Error("TMDB Response Error");
                 const data = await res.json();
+                
                 if (data.results && data.results.length > 0) {
                     const item = data.results.find(r => r.poster_path);
                     if (item) {
-                        let totalEp = 1;
+                        let totalEp = 12;
                         let seriesState = 'In corso';
                         let seasonsArray = [];
                         let mediaType = item.media_type || (item.title ? 'movie' : 'tv');
                         
                         if (mediaType === 'tv' && item.id) {
-                            const detailRes = await fetch(`https://api.themoviedb.org/3/tv/${item.id}?api_key=${TMDB_API_KEY}&language=it-IT`);
-                            const detailData = await detailRes.json();
-                            if (detailData.number_of_episodes) totalEp = detailData.number_of_episodes;
-                            if (detailData.status === 'Ended' || detailData.status === 'Canceled') {
-                                seriesState = detailData.status === 'Canceled' ? 'Cancellata' : 'Finita';
-                            }
-                            if (detailData.seasons) {
-                                seasonsArray = detailData.seasons.filter(s => s.season_number > 0).map(s => ({
-                                    season_number: s.season_number,
-                                    episode_count: s.episode_count || 10
-                                }));
-                            }
-                        } else {
-                            seriesState = 'Finita';
-                        }
+                            try {
+                                const detailRes = await fetch(`https://api.themoviedb.org/3/tv/${item.id}?api_key=${TMDB_API_KEY}&language=it-IT`);
+                                if (detailRes.ok) {
+                                    const detailData = await detailRes.json();
+                                    if (detailData.number_of_episodes) totalEp = detailData.number_of_episodes;
+                                    if (detailData.status === 'Ended' || detailData.status === 'Canceled') {
+                                        seriesState = detailData.status === 'Canceled' ? 'Cancellata' : 'Finita';
+                                    }
+                                    if (detailData.seasons) {
+                                        seasonsArray = detailData.seasons.filter(s => s.season_number > 0).map(s => ({
+                                            season_number: s.season_number,
+                                            episode_count: s.episode_count || 10
+                                        }));
+                                    }
+                                }
+                            } catch(e) {}
+                        } else { seriesState = 'Finita'; totalEp = 1; }
 
                         return {
                             poster: `https://image.tmdb.org/t/p/w500${item.poster_path}`,
@@ -252,8 +287,8 @@
                 }
             } catch (e) {}
             return { 
-                poster: `https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&auto=format&fit=crop`, 
-                totalEp: 10,
+                poster: createTitlePoster(title), 
+                totalEp: 12,
                 seriesState: 'In corso',
                 seasonsData: [],
                 type: 'serie' 
@@ -296,20 +331,26 @@
             document.getElementById('progressPreview').innerText = `S${String(season).padStart(2,'0')}E${String(epInSeason).padStart(2,'0')}`;
         }
 
+        // Sincronizzazione IA a blocchi con ritardo per evitare rate-limit
         async function runAIBulkEnhance() {
-            alert("Sincronizzazione IA in corso su tutte le copertine e dettagli...");
+            alert("L'IA sta sincronizzando locandine e stagioni ufficiali in background...");
+            let count = 0;
             for (let item of watchlist) {
                 const meta = await fetchMetadataForTitle(item.title);
                 item.customImage = meta.poster;
-                item.totalEp = meta.totalEp;
-                item.seasonsData = meta.seasonsData;
+                if (meta.totalEp > 1) item.totalEp = meta.totalEp;
+                if (meta.seasonsData.length > 0) item.seasonsData = meta.seasonsData;
                 item.seriesState = meta.seriesState;
+                count++;
+                if (count % 5 === 0) { saveToLocalStorage(); filterWatchlist(); }
+                await new Promise(r => setTimeout(r, 100)); // Delay tra chiamate
             }
             saveToLocalStorage();
             filterWatchlist();
-            alert("Libreria aggiornata con successo!");
+            alert("Sincronizzazione completata con successo!");
         }
 
+        // Parser Flessibile per File Excel
         async function importExcelFile(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -326,47 +367,66 @@
                         watchlist = [];
                         for (let index = 0; index < json.length; index++) {
                             const row = json[index];
-                            const rawTitle = row.Titolo || row.title || row[Object.keys(row)[0]] || "Senza titolo";
-                            const meta = await fetchMetadataForTitle(rawTitle);
-
-                            // Lettura corretta stagione ed episodio
-                            let currentEp = parseInt(row["Episodi Visti"] || row.currentEp || 1);
-                            let totalEp = parseInt(row["Episodi Totali"] || row.totalEp || meta.totalEp);
-                            const statusStr = String(row.Stato || row.status || "").toLowerCase();
-
-                            // Se lo stato nell'excel è specificato come in corso o da guardare, gestiamo il progresso
-                            if (statusStr.includes('corso') || statusStr.includes('guardare')) {
-                                if (currentEp >= totalEp) currentEp = 1;
-                            } else if (statusStr.includes('completat') || statusStr.includes('finito')) {
-                                currentEp = totalEp;
+                            
+                            // Trova titolo
+                            let rawTitle = "";
+                            for (let k of Object.keys(row)) {
+                                if (k.toLowerCase().includes('titolo') || k.toLowerCase().includes('title') || k.toLowerCase().includes('nome')) {
+                                    rawTitle = row[k]; break;
+                                }
                             }
+                            if (!rawTitle) rawTitle = row[Object.keys(row)[0]] || "Titolo " + (index + 1);
+
+                            // Mappatura Episodi e Stagioni
+                            let currentEp = 1, totalEp = 12;
+                            for (let k of Object.keys(row)) {
+                                const lk = k.toLowerCase();
+                                if (lk.includes('visti') || lk.includes('episodio') || lk.includes('ep') || lk.includes('puntata')) {
+                                    let val = parseInt(row[k]); if (!isNaN(val)) currentEp = val;
+                                }
+                                if (lk.includes('totali') || lk.includes('totale')) {
+                                    let val = parseInt(row[k]); if (!isNaN(val)) totalEp = val;
+                                }
+                            }
+
+                            // Verifica Stato
+                            let isDone = false;
+                            for (let k of Object.keys(row)) {
+                                const lk = k.toLowerCase();
+                                if (lk.includes('stato') || lk.includes('status') || lk.includes('visto')) {
+                                    const val = String(row[k]).toLowerCase();
+                                    if (val.includes('completat') || val.includes('finito') || val.includes('si') || val.includes('visto')) {
+                                        isDone = true;
+                                    }
+                                }
+                            }
+
+                            if (isDone) currentEp = Math.max(currentEp, totalEp);
 
                             watchlist.push({
                                 id: Date.now() + index,
-                                title: rawTitle,
-                                type: (row.Tipo || row.type || meta.type).toLowerCase().includes("film") ? "film" : "serie",
-                                seriesState: meta.seriesState,
+                                title: String(rawTitle).trim(),
+                                type: "serie",
+                                seriesState: "In corso",
                                 currentEp: currentEp,
                                 totalEp: totalEp,
-                                seasonsData: meta.seasonsData,
-                                customImage: meta.poster,
-                                notes: row["Note / Piattaforma"] || row.notes || "Netflix / Prime"
+                                seasonsData: [],
+                                customImage: createTitlePoster(String(rawTitle).trim()),
+                                notes: "Excel Import"
                             });
                         }
                         saveToLocalStorage();
                         filterWatchlist();
-                        alert(`Importati ${watchlist.length} titoli! Clicca su IA Sync per scaricare tutte le locandine.`);
+                        alert(`Importati ${watchlist.length} titoli! Avvia ora 'IA Sync' per scaricare le locandine reali.`);
                     }
-                } catch (err) {
-                    alert("Errore caricamento Excel.");
-                }
+                } catch (err) { alert("Errore nella lettura del file Excel."); }
             };
             reader.readAsArrayBuffer(file);
         }
 
         function getSeasonAndEpisode(item) {
             if (!item.seasonsData || item.seasonsData.length === 0) {
-                return `Ep. ${item.currentEp}`;
+                return `Episodio ${item.currentEp}`;
             }
             let acc = 0;
             for (let s of item.seasonsData) {
@@ -376,7 +436,7 @@
                 }
                 acc += s.episode_count;
             }
-            return `Ep. ${item.currentEp}`;
+            return `Episodio ${item.currentEp}`;
         }
 
         function filterWatchlist() {
@@ -385,6 +445,7 @@
             const canvas = document.getElementById('fxCanvas');
             const badge = document.getElementById('modeBadge');
             
+            body.className = "min-h-screen flex flex-col pb-44";
             canvas.classList.add('hidden');
             if (fxInterval) clearInterval(fxInterval);
             badge.classList.add('hidden');
@@ -392,7 +453,9 @@
             if (query === 'matrix') {
                 badge.innerText = "🟩 MATRIX CODE"; badge.classList.remove('hidden'); canvas.classList.remove('hidden'); startMatrixRain();
             } else if (query === 'hogwarts' || query === 'harrypotter') {
-                badge.innerText = "✨ HOGWARTS MAGICA"; badge.classList.remove('hidden'); canvas.classList.remove('hidden'); startHogwarts();
+                badge.innerText = "✨ HOGWARTS MAGICA"; badge.classList.remove('hidden'); canvas.classList.remove('hidden'); body.classList.add('mode-hogwarts'); startHogwarts();
+            } else if (query === 'marvel') {
+                badge.innerText = "⚡ MARVEL COSMIC"; badge.classList.remove('hidden'); canvas.classList.remove('hidden'); body.classList.add('mode-marvel'); startMarvel();
             }
 
             const filtered = watchlist.filter(item => {
@@ -429,6 +492,19 @@
             }, 30);
         }
 
+        function startMarvel() {
+            const canvas = document.getElementById('fxCanvas'); const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            fxInterval = setInterval(() => {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.25)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = Math.random() > 0.5 ? '#38bdf8' : '#ef4444';
+                ctx.lineWidth = 3; ctx.beginPath();
+                let x = Math.random() * canvas.width, y = 0; ctx.moveTo(x, y);
+                while(y < canvas.height) { y += Math.random() * 40; x += (Math.random() - 0.5) * 40; ctx.lineTo(x, y); }
+                ctx.stroke();
+            }, 60);
+        }
+
         function renderWatchlist(items) {
             const grid = document.getElementById('watchlistGrid');
             grid.innerHTML = '';
@@ -439,11 +515,11 @@
             items.forEach(item => {
                 const card = document.createElement('div');
                 card.className = "bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col justify-between shadow-xl relative active:scale-95 transition transform";
-                const imgSrc = item.customImage || `https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&auto=format&fit=crop`;
+                const imgSrc = item.customImage || createTitlePoster(item.title);
                 
                 const isCompleted = item.currentEp >= item.totalEp && item.totalEp > 0;
                 
-                let badgeBg = 'bg-indigo-600/90';
+                let badgeBg = 'bg-purple-600/90';
                 if (item.seriesState?.includes('Finita')) badgeBg = 'bg-slate-700/90';
                 if (item.seriesState?.includes('Cancellata')) badgeBg = 'bg-rose-600/90';
 
@@ -455,12 +531,12 @@
 
                 card.innerHTML = `
                     <div class="h-52 bg-slate-950 relative overflow-hidden flex items-center justify-center">
-                        <img src="${imgSrc}" class="w-full h-full object-cover" alt="${item.title}" onerror="this.src='https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&auto=format&fit=crop'">
+                        <img src="${imgSrc}" class="w-full h-full object-cover" alt="${item.title}" onerror="this.src='${createTitlePoster(item.title)}'">
                         ${statusBadge}
                     </div>
                     <div class="p-3 flex flex-col gap-1.5">
                         <h4 class="text-xs font-bold text-white truncate">${item.title}</h4>
-                        <p class="text-[10px] text-indigo-400 font-medium truncate"><i class="fa-solid fa-tv"></i> ${item.notes || 'Streaming'}</p>
+                        <p class="text-[10px] text-purple-400 font-medium truncate"><i class="fa-solid fa-tv"></i> ${item.notes || 'Streaming'}</p>
                         <div class="flex items-center justify-between mt-1 pt-2 border-t border-slate-800 text-[10px]">
                             <span class="text-emerald-400 font-bold font-mono"><i class="fa-solid fa-play text-[8px]"></i> ${progressLabel}</span>
                             <button onclick="openEditModal(${item.id})" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-pen text-xs"></i></button>
@@ -476,7 +552,7 @@
             document.querySelectorAll('.filter-pill').forEach(b => {
                 b.className = "filter-pill px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap bg-slate-900 text-slate-300 border border-slate-800";
             });
-            if (btnElement) btnElement.className = "filter-pill px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap bg-indigo-600 text-white shadow-md";
+            if (btnElement) btnElement.className = "filter-pill px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap bg-purple-600 text-white shadow-md";
             filterWatchlist();
         }
 
@@ -506,18 +582,16 @@
             document.getElementById('formNotes').value = item.notes || '';
             document.getElementById('formCustomImage').value = item.customImage || '';
             document.getElementById('formSeasonsData').value = JSON.stringify(item.seasonsData || []);
-            document.getElementById('formTotalEp').value = item.totalEp || 1;
+            document.getElementById('formTotalEp').value = item.totalEp || 12;
 
             let season = 1, epInSeason = item.currentEp || 1;
             if (item.seasonsData && item.seasonsData.length > 0) {
-                let acc = 0;
-                let found = false;
+                let acc = 0, found = false;
                 for (let s of item.seasonsData) {
                     if (item.currentEp <= acc + s.episode_count) {
                         season = s.season_number;
                         epInSeason = Math.max(1, item.currentEp - acc);
-                        found = true;
-                        break;
+                        found = true; break;
                     }
                     acc += s.episode_count;
                 }
@@ -540,15 +614,12 @@
             const type = document.getElementById('formType').value;
             const seriesState = document.getElementById('formSeriesState').value;
             const currentEp = parseInt(document.getElementById('formCurrentEp').value) || 1;
-            const totalEp = parseInt(document.getElementById('formTotalEp').value) || 1;
+            const totalEp = parseInt(document.getElementById('formTotalEp').value) || 12;
             const seasonsData = JSON.parse(document.getElementById('formSeasonsData').value || '[]');
             let customImage = document.getElementById('formCustomImage').value;
             const notes = document.getElementById('formNotes').value;
 
-            if (!customImage) {
-                const meta = await fetchMetadataForTitle(title);
-                customImage = meta.poster;
-            }
+            if (!customImage) customImage = createTitlePoster(title);
 
             if (id) {
                 const item = watchlist.find(i => i.id == id);
